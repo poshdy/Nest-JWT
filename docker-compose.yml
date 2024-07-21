@@ -1,0 +1,23 @@
+version: '3'
+services:
+  db:
+    image: postgres:16-alpine
+    ports:
+      - 5434:5432
+    env_file: .env
+    container_name: db
+    volumes:
+      - db_vol:/var/lib/postgresql/data
+    restart: always
+
+  adminer:
+    image: adminer
+    ports:
+      - 8080:8080
+    depends_on:
+      - db
+    container_name: adminer
+    restart: always
+
+volumes:
+  db_vol:
