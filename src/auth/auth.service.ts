@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { AuthDto } from './dto/auth.dto';
 import * as bcrypt from 'bcrypt';
@@ -18,24 +18,65 @@ export class AuthService {
         hash,
       },
     });
-
     const { access_token, refresh_token } = await this.generateTokens(
       user.id,
       user.email,
     );
-
     await this.updateRefreshToken(user.id, refresh_token);
-
     return {
       access_token,
       refresh_token,
     };
   }
-  signIn(dto: AuthDto) {
-    console.log(dto);
+  async signIn(dto: AuthDto) {
+    const user = await this.dataService.user.findUnique({
+      where: {
+        email: dto.email,
+      },
+    });
+    if (!user) throw new ForbiddenException('access denied');
+    const isPassMatch = await bcrypt.compare(dto.password, user.hash);
+    if (!isPassMatch) throw new ForbiddenException('access denied');
+    const { access_token, refresh_token } = await this.generateTokens(
+      user.id,
+      user.email,
+    );
+    await this.updateRefreshToken(user.id, refresh_token);
+    return {
+      access_token,
+      refresh_token,
+    };
   }
-  signOut() {}
-  refreshToken() {}
+  async signOut(userId: number) {
+    await this.dataService.user.updateMany({
+      data: {
+        hashRt: '',
+      },
+      where: {
+        hashRt: {
+          not: null,
+        },
+        id: userId,
+      },
+    });
+  }
+  async refreshToken(userId: number, refresh: string) {
+    const user = await this.dataService.user.findUnique({
+      where: { id: userId },
+    });
+    if (!user) throw new ForbiddenException('access denied');
+    const isRtMatch = await bcrypt.compare(refresh, user.hashRt);
+    if (!isRtMatch) throw new ForbiddenException('access denied');
+    const { access_token, refresh_token } = await this.generateTokens(
+      user.id,
+      user.email,
+    );
+    await this.updateRefreshToken(user.id, refresh_token);
+    return {
+      access_token,
+      refresh_token,
+    };
+  }
   async generateTokens(userId: number, email: string) {
     const user = {
       userId,

@@ -3,6 +3,11 @@ import { PassportStrategy } from '@nestjs/passport';
 
 import { ExtractJwt, Strategy } from 'passport-jwt';
 
+type JWTPAYLOAD = {
+  id: number;
+  email: string;
+};
+
 @Injectable()
 export class AccessTokenStrategy extends PassportStrategy(Strategy, 'jwt') {
   constructor() {
@@ -12,7 +17,7 @@ export class AccessTokenStrategy extends PassportStrategy(Strategy, 'jwt') {
       ignoreExpiration: false,
     });
   }
-  async validate(payload: any) {
+  async validate(payload: JWTPAYLOAD) {
     return payload;
   }
 }
